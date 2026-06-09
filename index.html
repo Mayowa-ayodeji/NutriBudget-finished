@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriBudget – App Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ============================================================
+   VARIABLES & RESET
+============================================================ */
+:root{
+  --green-dark:#2E7D32;--green-mid:#43A047;--green-light:#66BB6A;
+  --amber:#F59E0B;--amber-light:#FBBF24;
+  --red:#EF5350;--blue:#5C6BC0;--orange:#FFB74D;
+  --bg:#F4F9F4;--card:#FFFFFF;--text:#1A1A1A;
+  --muted:#6B7B6B;--border:#E0EDE0;--nav-bg:#FFFFFF;
+}
+body.dark{
+  --bg:#0E1A0E;--card:#1A2B1A;--text:#F0F7F0;
+  --muted:#8FA98F;--border:#2A3D2A;--nav-bg:#152015;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{height:100%;height:100dvh;}
+body{
+  height:100%;height:100dvh;
+  overflow:hidden;
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);color:var(--text);
+  transition:background .4s,color .4s;
+}
+
+/* ============================================================
+   ONBOARDING SHELL  (full page, sits above #app)
+============================================================ */
+#onboarding{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  transition:opacity .5s ease;
+}
+#onboarding.hidden{opacity:0;pointer-events:none;}
+
+/* Loading screen */
+#ob-loading{
+  position:absolute;inset:0;
+  background:linear-gradient(145deg,#1B5E20,#2E7D32,#388E3C);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:1rem;
+  transition:opacity .5s;
+}
+body.dark #ob-loading{background:linear-gradient(145deg,#0A1A0A,#1B5E20,#2E7D32);}
+#ob-loading.fade{opacity:0;pointer-events:none;}
+.ob-logo-icon{width:84px;height:84px;border-radius:22px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:2.8rem;border:2px solid rgba(255,255,255,.3);animation:pulse 2s infinite;}
+.ob-logo-title{font-family:'Playfair Display',serif;font-size:2.4rem;color:white;letter-spacing:-1px;}
+.ob-logo-title span{color:var(--amber-light);}
+.ob-tagline{color:rgba(255,255,255,.75);font-size:.9rem;letter-spacing:3px;text-transform:uppercase;}
+.ob-loader-bar{margin-top:2rem;width:180px;height:4px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden;}
+.ob-loader-fill{height:100%;background:var(--amber-light);border-radius:10px;animation:load 2.5s ease forwards;}
+@keyframes load{0%{width:0}100%{width:100%}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+/* Slide pages */
+#ob-slides{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .4s;
+}
+#ob-slides.visible{opacity:1;pointer-events:all;}
+.ob-slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:2rem 2rem 7rem;text-align:center;gap:1.5rem;
+  opacity:0;pointer-events:none;
+  transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .42s;
+  transform:translateX(60px);
+}
+.ob-slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.ob-slide.exit-left{opacity:0;transform:translateX(-60px);}
+.ob-illus{
+  width:clamp(130px,32vw,190px);height:clamp(130px,32vw,190px);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(3.5rem,9vw,5.5rem);position:relative;
+}
+.ob-illus::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:3px dashed var(--green-light);opacity:.5;animation:spin 12s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ob-badge{position:absolute;bottom:8px;right:8px;background:var(--amber);color:white;font-size:.6rem;font-weight:700;padding:.18rem .5rem;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
+#slide-1 .ob-illus{background:linear-gradient(135deg,#E8F5E9,#C8E6C9);}
+#slide-2 .ob-illus{background:linear-gradient(135deg,#FFF8E1,#FFE082);}
+#slide-3 .ob-illus{background:linear-gradient(135deg,#E3F2FD,#BBDEFB);}
+body.dark #slide-1 .ob-illus{background:linear-gradient(135deg,#1B3A1F,#2E4A2E);}
+body.dark #slide-2 .ob-illus{background:linear-gradient(135deg,#3A2A00,#4A3800);}
+body.dark #slide-3 .ob-illus{background:linear-gradient(135deg,#0D2137,#1A3A50);}
+.ob-step{font-size:.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--green-mid);}
+.ob-title{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,5vw,2.2rem);line-height:1.2;}
+.ob-title span{color:var(--amber);}
+.ob-desc{font-size:clamp(.88rem,2.5vw,.98rem);line-height:1.7;color:var(--muted);max-width:360px;}
+
+/* Get started slide */
+#slide-gs{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:2rem;gap:1.2rem;text-align:center;
+  opacity:0;pointer-events:none;
+  transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .42s;
+  transform:translateX(60px);
+}
+#slide-gs.active{opacity:1;pointer-events:all;transform:translateX(0);}
+#slide-gs.exit-left{opacity:0;transform:translateX(-60px);}
+.gs-logo{font-family:'Playfair Display',serif;font-size:2rem;color:var(--green-dark);}
+body.dark .gs-logo{color:var(--green-light);}
+.gs-logo span{color:var(--amber);}
+.gs-title{font-family:'Playfair Display',serif;font-size:clamp(1.4rem,4vw,1.9rem);line-height:1.3;}
+.gs-sub{font-size:.9rem;color:var(--muted);line-height:1.6;max-width:340px;}
+.gs-btns{width:100%;max-width:340px;display:flex;flex-direction:column;gap:.7rem;}
+.btn-primary{width:100%;background:linear-gradient(135deg,var(--green-dark),var(--green-mid));color:white;border:none;padding:.95rem;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s;box-shadow:0 4px 18px rgba(46,125,50,.3);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(46,125,50,.4);}
+.btn-secondary{width:100%;background:transparent;color:var(--green-dark);border:2px solid var(--green-mid);padding:.95rem;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s;}
+body.dark .btn-secondary{color:var(--green-light);border-color:var(--green-light);}
+.btn-secondary:hover{background:var(--green-mid);color:white;}
+.gs-terms{font-size:.72rem;color:var(--muted);}
+.gs-terms a{color:var(--green-mid);text-decoration:none;}
+
+/* Onboarding bottom nav */
+.ob-nav{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:1.2rem 1.5rem 1.8rem;
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(to top,var(--bg) 65%,transparent);
+}
+.ob-dots{display:flex;gap:7px;align-items:center;}
+.ob-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .3s;cursor:pointer;}
+.ob-dot.active{width:22px;border-radius:4px;background:var(--green-mid);}
+.ob-btn-skip{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer;padding:.4rem;}
+.ob-btn-skip:hover{color:var(--green-mid);}
+.ob-btn-next{background:linear-gradient(135deg,var(--green-dark),var(--green-mid));color:white;border:none;padding:.75rem 1.6rem;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;transition:all .3s;box-shadow:0 4px 16px rgba(46,125,50,.3);}
+.ob-btn-next:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(46,125,50,.4);}
+.ob-btn-next.amber-btn{background:linear-gradient(135deg,#D97706,var(--amber));}
+
+/* ============================================================
+   APP LAYOUT  (desktop: fixed topbar + sidenav + scrollable main)
+============================================================ */
+#app{
+  width:100%;
+  height:100vh;
+  height:100dvh; /* dynamic viewport height — shrinks when browser chrome appears on phones */
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+/* TOP BAR — always fixed at the very top, full width */
+.topbar{
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 1.2rem;
+  background:var(--nav-bg);
+  border-bottom:1px solid var(--border);
+  z-index:50;
+  transition:background .4s;
+  /* safe-area for phone notch */
+  padding-top:calc(.75rem + env(safe-area-inset-top, 0px));
+}
+.topbar-left{display:flex;align-items:center;gap:.7rem;}
+.hamburger{display:flex;flex-direction:column;gap:4px;cursor:pointer;padding:4px;}
+.hamburger span{width:22px;height:2.5px;background:var(--text);border-radius:2px;}
+.app-name{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--green-dark);letter-spacing:-.3px;}
+body.dark .app-name{color:var(--green-light);}
+.app-name span{color:var(--amber);}
+
+/* UID stacked above user count */
+.topbar-right{display:flex;align-items:center;gap:.7rem;}
+.uid-user-stack{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.uid-badge{font-size:.58rem;font-weight:600;color:var(--muted);letter-spacing:1px;background:var(--border);padding:.15rem .45rem;border-radius:20px;line-height:1.2;}
+.user-chip{display:flex;align-items:center;gap:.3rem;background:var(--green-dark);color:white;padding:.25rem .5rem;border-radius:20px;font-size:.75rem;font-weight:600;cursor:pointer;}
+.user-chip .count{background:var(--amber);color:white;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;}
+.theme-btn{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:2px;flex-shrink:0;}
+
+/* Middle spacer so notch area stays clear */
+.topbar-mid{flex:1;}
+
+/* Body row: screens fill all available space */
+.body-row{
+  flex:1;
+  overflow:hidden;
+  display:flex;
+  position:relative;
+}
+
+/* ============================================================
+   BOTTOM NAV — fixed at bottom on mobile, always visible
+============================================================ */
+.bottom-nav{
+  position:fixed;
+  bottom:0; left:0; right:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  background:var(--nav-bg);
+  border-top:1px solid var(--border);
+  padding:.4rem 0;
+  padding-bottom:max(.6rem, env(safe-area-inset-bottom, .6rem));
+  transition:background .4s;
+  width:100%;
+  z-index:100;
+  min-height:62px;
+}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;flex:1;padding:.15rem 0;transition:all .2s;}
+.nav-icon{font-size:1.2rem;transition:transform .2s;}
+.nav-label{font-size:.58rem;font-weight:600;color:var(--muted);letter-spacing:.4px;transition:color .2s;}
+.nav-item.active .nav-label{color:var(--green-mid);}
+.nav-item.active .nav-icon{transform:scale(1.15);}
+.nav-item:hover .nav-icon{transform:translateY(-2px);}
+.nav-home-btn{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--green-dark),var(--green-mid));display:flex;align-items:center;justify-content:center;font-size:1.3rem;box-shadow:0 4px 14px rgba(46,125,50,.4);margin-top:-14px;transition:all .3s;}
+.nav-home-btn:hover{transform:translateY(-3px);box-shadow:0 7px 22px rgba(46,125,50,.5);}
+
+/* ============================================================
+   SCREENS WRAP
+============================================================ */
+.screens-wrap{
+  flex:1;position:relative;overflow:hidden;
+}
+.screen{
+  position:absolute;inset:0;
+  overflow-y:auto;
+  transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .42s;
+  opacity:1;
+  padding-bottom:80px; /* clears fixed bottom nav on mobile */
+}
+.screen.slide-left {transform:translateX(-100%);opacity:0;pointer-events:none;}
+.screen.slide-right{transform:translateX(100%); opacity:0;pointer-events:none;}
+.screen.active     {transform:translateX(0);    opacity:1;pointer-events:all;}
+
+/* ============================================================
+   SHARED COMPONENTS
+============================================================ */
+.section-label{font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:space-between;padding:0 1.2rem;margin-bottom:.6rem;}
+.section-label a{color:var(--green-mid);text-decoration:none;font-size:.78rem;letter-spacing:0;text-transform:none;font-weight:500;}
+.page-title{font-family:'Playfair Display',serif;font-size:1.5rem;padding:1.1rem 1.2rem .4rem;color:var(--text);}
+.btn-fab{position:fixed;bottom:90px;right:1.2rem;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--green-dark),var(--green-mid));color:white;border:none;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 16px rgba(46,125,50,.4);display:flex;align-items:center;justify-content:center;transition:all .3s;z-index:20;}
+.btn-fab:hover{transform:scale(1.1) translateY(-2px);}
+
+/* ============================================================
+   DASHBOARD
+============================================================ */
+#screen-dashboard{padding:0;}
+.dash-content{padding:1rem 1.2rem 1.5rem;display:flex;flex-direction:column;gap:1.1rem;}
+
+.budget-card{background:linear-gradient(135deg,#1B5E20,var(--green-dark),#2E7D32);border-radius:20px;padding:1.4rem;color:white;position:relative;overflow:hidden;}
+.budget-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06);}
+.budget-card::after{content:'';position:absolute;bottom:-20px;left:40px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.04);}
+.budget-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.currency-sel{background:rgba(255,255,255,.15);border:none;color:white;padding:.28rem .7rem;border-radius:20px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;}
+.budget-remaining{font-size:.72rem;opacity:.85;background:rgba(255,255,255,.15);padding:.18rem .55rem;border-radius:20px;}
+.budget-amount{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,7vw,2.6rem);font-weight:900;letter-spacing:-1px;line-height:1.1;}
+.budget-amount .kobo{font-size:.95rem;opacity:.7;font-weight:400;}
+.budget-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;gap:.8rem;}
+.plan-sel{background:rgba(255,255,255,.15);border:none;color:white;padding:.3rem .7rem;border-radius:20px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;flex-shrink:0;}
+.budget-progress{flex:1;}
+.progress-label{font-size:.68rem;opacity:.75;margin-bottom:.28rem;display:flex;justify-content:space-between;}
+.progress-bar{height:6px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--amber-light);border-radius:10px;width:62%;transition:width 1s ease;}
+
+/* Meal cards — more padding as requested */
+.meal-cards{display:flex;flex-direction:column;gap:.8rem;}
+.meal-card{background:var(--card);border-radius:16px;padding:1.1rem 1.2rem;display:flex;align-items:center;gap:1rem;border:1.5px solid var(--border);transition:all .3s;cursor:pointer;position:relative;overflow:hidden;}
+.meal-card:hover{border-color:var(--green-light);transform:translateY(-2px);box-shadow:0 6px 20px rgba(46,125,50,.12);}
+.meal-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:5px 0 0 5px;}
+.meal-card.breakfast::before{background:var(--orange);}
+.meal-card.lunch::before{background:var(--green-mid);}
+.meal-card.dinner::before{background:var(--blue);}
+.meal-img{width:56px;height:56px;border-radius:13px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.9rem;flex-shrink:0;}
+.meal-info{flex:1;min-width:0;}
+.meal-type{font-size:.63rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:.18rem;}
+.meal-card.breakfast .meal-type{color:var(--orange);}
+.meal-card.lunch .meal-type{color:var(--green-mid);}
+.meal-card.dinner .meal-type{color:var(--blue);}
+.meal-name{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.meal-time{font-size:.73rem;color:var(--muted);margin-top:.15rem;}
+.meal-cost{text-align:right;flex-shrink:0;}
+.meal-cost .amount{font-weight:700;font-size:.92rem;color:var(--green-dark);}
+body.dark .meal-cost .amount{color:var(--green-light);}
+.meal-cost .per{font-size:.63rem;color:var(--muted);}
+
+.deficiency-card{background:var(--card);border-radius:14px;border:1.5px solid #FFCDD2;overflow:hidden;}
+body.dark .deficiency-card{border-color:#5D1A1A;}
+.def-header{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;cursor:pointer;background:#FFF5F5;transition:background .3s;}
+body.dark .def-header{background:#2A1515;}
+.def-header:hover{background:#FFEBEE;}
+.def-left{display:flex;align-items:center;gap:.6rem;}
+.alert-icon{width:30px;height:30px;border-radius:10px;background:#FFCDD2;display:flex;align-items:center;justify-content:center;font-size:.95rem;}
+body.dark .alert-icon{background:#5D1A1A;}
+.def-title{font-weight:700;font-size:.88rem;color:var(--red);}
+.def-count{font-size:.68rem;color:var(--muted);margin-top:.08rem;}
+.alert-badge{background:var(--red);color:white;font-size:.68rem;font-weight:700;padding:.12rem .45rem;border-radius:20px;}
+.def-body{padding:0 1rem;max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s;}
+.def-body.open{max-height:200px;padding:.65rem 1rem 1rem;}
+.def-item{display:flex;align-items:center;gap:.55rem;padding:.42rem 0;border-bottom:1px solid var(--border);font-size:.82rem;}
+.def-item:last-child{border-bottom:none;}
+.def-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0;}
+.def-name{flex:1;font-weight:500;}
+.def-level{font-size:.7rem;color:var(--red);font-weight:600;background:#FFEBEE;padding:.08rem .4rem;border-radius:10px;}
+body.dark .def-level{background:#3D1515;}
+
+/* ============================================================
+   MEAL LIST
+============================================================ */
+#screen-meals{padding:0;}
+.meals-content{padding:.6rem 1.2rem 1rem;display:flex;flex-direction:column;gap:.8rem;}
+.meal-list-card{background:var(--card);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;}
+.mlc-header{display:flex;align-items:center;gap:.8rem;padding:.95rem 1rem;cursor:pointer;}
+.mlc-header:hover{background:rgba(46,125,50,.04);}
+.mlc-img{width:48px;height:48px;border-radius:12px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;}
+.mlc-info{flex:1;min-width:0;}
+.mlc-name{font-weight:700;font-size:.95rem;}
+.mlc-ingr{font-size:.72rem;color:var(--muted);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mlc-toggle{font-size:.8rem;color:var(--muted);transition:transform .3s;flex-shrink:0;}
+.mlc-toggle.open{transform:rotate(180deg);}
+.mlc-body{max-height:0;overflow:hidden;transition:max-height .4s ease;}
+.mlc-body.open{max-height:400px;}
+.mlc-inner{padding:.2rem 1rem 1rem;}
+.mlc-meta{display:flex;align-items:center;gap:.5rem;margin-bottom:.7rem;}
+.mlc-big-img{width:60px;height:60px;border-radius:12px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;}
+.mlc-serving{font-size:.78rem;color:var(--muted);}
+.mlc-serving strong{color:var(--text);display:block;font-size:.85rem;margin-bottom:.2rem;}
+.ingr-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.3rem;}
+.ingr-table th{text-align:left;color:var(--muted);font-weight:600;font-size:.68rem;letter-spacing:1px;text-transform:uppercase;padding:.3rem .4rem;border-bottom:1px solid var(--border);}
+.ingr-table td{padding:.38rem .4rem;border-bottom:1px solid var(--border);}
+.ingr-table tr:last-child td{border-bottom:none;}
+.btn-delete{background:#FFEBEE;color:var(--red);border:none;border-radius:8px;padding:.25rem .6rem;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-delete:hover{background:var(--red);color:white;}
+.add-meal-row{display:flex;align-items:center;gap:.5rem;padding:.5rem 0 0;cursor:pointer;color:var(--green-mid);font-weight:600;font-size:.85rem;}
+
+/* ============================================================
+   DIET PROFILE
+============================================================ */
+#screen-diet{padding:0;}
+.diet-content{padding:.6rem 1.2rem 1rem;display:flex;flex-direction:column;gap:1rem;}
+.view-toggle{display:flex;background:var(--border);border-radius:12px;padding:3px;gap:3px;}
+.vt-btn{flex:1;padding:.42rem;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;background:transparent;color:var(--muted);transition:all .3s;}
+.vt-btn.active{background:var(--card);color:var(--green-dark);box-shadow:0 2px 8px rgba(0,0,0,.1);}
+body.dark .vt-btn.active{color:var(--green-light);}
+.diet-week{display:flex;flex-direction:column;gap:.6rem;}
+.diet-day-card{background:var(--card);border-radius:14px;border:1.5px solid var(--border);overflow:hidden;}
+.ddc-header{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;cursor:pointer;transition:background .3s;}
+.ddc-header:hover{background:rgba(46,125,50,.04);}
+.ddc-day{font-weight:700;font-size:.9rem;}
+.ddc-meals{font-size:.7rem;color:var(--muted);}
+.ddc-toggle{font-size:.8rem;color:var(--muted);transition:transform .3s;}
+.ddc-toggle.open{transform:rotate(180deg);}
+.ddc-body{max-height:0;overflow:hidden;transition:max-height .4s ease;}
+.ddc-body.open{max-height:500px;}
+.ddc-inner{padding:.4rem 1rem .9rem;display:flex;flex-direction:column;gap:.5rem;}
+.ddc-meal-row{display:flex;align-items:center;gap:.6rem;padding:.45rem .5rem;background:var(--bg);border-radius:10px;cursor:pointer;transition:all .3s;}
+.ddc-meal-row:hover{background:rgba(46,125,50,.08);}
+.ddc-meal-type{font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;width:60px;flex-shrink:0;}
+.ddc-meal-name{flex:1;font-size:.82rem;font-weight:500;}
+.ddc-arrow{font-size:.75rem;color:var(--muted);}
+.nutrient-panel{background:var(--card);border-radius:16px;border:1.5px solid var(--border);padding:1.1rem;display:none;}
+.nutrient-panel.visible{display:block;}
+.np-title{font-weight:700;font-size:.95rem;margin-bottom:.2rem;}
+.np-sub{font-size:.75rem;color:var(--muted);margin-bottom:.9rem;}
+.chart-wrap{position:relative;height:200px;margin-bottom:1rem;}
+.nutrient-bars{display:flex;flex-direction:column;gap:.6rem;}
+.nb-row{display:flex;align-items:center;gap:.7rem;font-size:.8rem;}
+.nb-label{width:90px;font-weight:500;flex-shrink:0;}
+.nb-bar-wrap{flex:1;height:8px;background:var(--border);border-radius:10px;overflow:hidden;}
+.nb-bar{height:100%;border-radius:10px;transition:width 1s ease;}
+.nb-val{width:35px;text-align:right;font-weight:700;font-size:.78rem;flex-shrink:0;}
+.def-section{background:#FFF5F5;border-radius:14px;padding:.9rem 1rem;border:1.5px solid #FFCDD2;}
+body.dark .def-section{background:#2A1515;border-color:#5D1A1A;}
+.def-sec-title{font-weight:700;font-size:.85rem;color:var(--red);margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem;}
+.nutrient-list{display:flex;flex-direction:column;gap:.5rem;}
+.nl-item{background:var(--card);border-radius:12px;border:1.5px solid var(--border);padding:.8rem 1rem;display:flex;align-items:center;justify-content:space-between;}
+.nl-name{font-weight:600;font-size:.88rem;}
+.nl-sub{font-size:.7rem;color:var(--muted);margin-top:.1rem;}
+.nl-val{font-weight:700;font-size:.95rem;color:var(--green-dark);}
+body.dark .nl-val{color:var(--green-light);}
+.nl-badge{font-size:.65rem;font-weight:600;padding:.1rem .45rem;border-radius:20px;margin-top:.2rem;display:inline-block;}
+.nl-badge.ok{background:#E8F5E9;color:var(--green-dark);}
+.nl-badge.low{background:#FFF8E1;color:#F59E0B;}
+.nl-badge.def{background:#FFEBEE;color:var(--red);}
+
+/* ============================================================
+   MARKET PRICE
+============================================================ */
+#screen-market{padding:0;}
+.market-content{padding:.6rem 1.2rem 1rem;display:flex;flex-direction:column;gap:.8rem;}
+.market-note{background:rgba(245,158,11,.1);border-radius:12px;padding:.75rem 1rem;font-size:.78rem;color:#92650A;border-left:3px solid var(--amber);display:flex;align-items:center;gap:.5rem;}
+body.dark .market-note{color:var(--amber-light);}
+.market-table-card{background:var(--card);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;}
+.mt-head{display:grid;grid-template-columns:1fr 130px 110px 36px;gap:.3rem;padding:.6rem 1rem;background:var(--border);font-size:.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.mt-row{display:grid;grid-template-columns:1fr 130px 110px 36px;gap:.3rem;padding:.68rem 1rem;border-bottom:1px solid var(--border);align-items:center;transition:background .2s;}
+.mt-row:last-child{border-bottom:none;}
+.mt-row:hover{background:rgba(46,125,50,.04);}
+.mt-ingr{font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:.4rem;}
+.mt-ingr-icon{font-size:1.1rem;}
+.qty-select{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:.28rem .4rem;font-family:'DM Sans',sans-serif;font-size:.75rem;color:var(--text);cursor:pointer;width:100%;}
+.price-input{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:.28rem .5rem;font-family:'DM Sans',sans-serif;font-size:.8rem;color:var(--text);width:100%;transition:border .3s;}
+.price-input:focus{outline:none;border-color:var(--green-mid);}
+.mt-del{background:none;border:none;font-size:1rem;cursor:pointer;color:var(--muted);transition:color .2s;padding:2px;}
+.mt-del:hover{color:var(--red);}
+.add-ingr-row{display:flex;align-items:center;gap:.5rem;padding:.8rem 1rem;cursor:pointer;color:var(--green-mid);font-weight:600;font-size:.85rem;border-top:1px dashed var(--border);}
+.add-ingr-row:hover{background:rgba(46,125,50,.04);}
+.market-total{background:linear-gradient(135deg,var(--green-dark),var(--green-mid));border-radius:14px;padding:1rem 1.2rem;color:white;display:flex;align-items:center;justify-content:space-between;}
+.mt-total-label{font-size:.78rem;opacity:.85;}
+.mt-total-amount{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;}
+.mt-total-sub{font-size:.68rem;opacity:.7;}
+
+/* ============================================================
+   USER PROFILE
+============================================================ */
+#screen-profile{padding:0;}
+.profile-content{padding:.6rem 1.2rem 1rem;display:flex;flex-direction:column;gap:.8rem;}
+.profile-card{background:var(--card);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;}
+.pc-header{display:flex;align-items:center;gap:.9rem;padding:.95rem 1rem;cursor:pointer;transition:background .3s;}
+.pc-header:hover{background:rgba(46,125,50,.04);}
+.pc-avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--green-mid),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.pc-info{flex:1;min-width:0;}
+.pc-name{font-weight:700;font-size:.95rem;}
+.pc-meta{font-size:.72rem;color:var(--muted);margin-top:.1rem;}
+.pc-toggle{font-size:.8rem;color:var(--muted);transition:transform .3s;flex-shrink:0;}
+.pc-toggle.open{transform:rotate(180deg);}
+.pc-body{max-height:0;overflow:hidden;transition:max-height .5s ease;}
+.pc-body.open{max-height:600px;}
+.pc-inner{padding:.2rem 1rem 1rem;display:flex;flex-direction:column;gap:.6rem;}
+.pc-fields{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+.pc-field{display:flex;flex-direction:column;gap:.2rem;}
+.pc-field.full{grid-column:1/-1;}
+.pc-label{font-size:.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.pc-input{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:.52rem .7rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);transition:border .3s;width:100%;}
+.pc-input:focus{outline:none;border-color:var(--green-mid);}
+.pc-select{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:.52rem .7rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);cursor:pointer;width:100%;}
+.bmi-card{background:linear-gradient(135deg,rgba(46,125,50,.08),rgba(67,160,71,.12));border-radius:12px;padding:.8rem 1rem;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(46,125,50,.2);}
+.bmi-val{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--green-dark);}
+body.dark .bmi-val{color:var(--green-light);}
+.bmi-label{font-size:.7rem;color:var(--muted);}
+.bmi-status{font-size:.75rem;font-weight:600;background:#E8F5E9;color:var(--green-dark);padding:.2rem .6rem;border-radius:20px;}
+body.dark .bmi-status{background:#1B3A1F;}
+.btn-save{width:100%;background:linear-gradient(135deg,var(--green-dark),var(--green-mid));color:white;border:none;padding:.72rem;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .3s;}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(46,125,50,.3);}
+.add-person-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;background:var(--card);border:2px dashed var(--green-light);border-radius:16px;padding:1rem;cursor:pointer;color:var(--green-mid);font-weight:600;font-size:.9rem;transition:all .3s;}
+.add-person-btn:hover{background:rgba(46,125,50,.05);border-color:var(--green-mid);}
+
+/* ============================================================
+   MODAL OVERLAY & DRAWERS
+============================================================ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(4px);}
+.overlay.open{opacity:1;pointer-events:all;}
+.drawer{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;z-index:201;padding:1.5rem 1.2rem 2rem;transition:transform .4s cubic-bezier(.4,0,.2,1);}
+.drawer.open{transform:translateX(-50%) translateY(0);}
+.drawer-handle{width:36px;height:4px;background:var(--border);border-radius:10px;margin:0 auto 1.2rem;}
+.drawer-title{font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:1rem;}
+.drawer-fields{display:flex;flex-direction:column;gap:.7rem;}
+.drawer-field{display:flex;flex-direction:column;gap:.25rem;}
+.drawer-label{font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.drawer-input{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:.62rem .8rem;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--text);width:100%;transition:border .3s;}
+.drawer-input:focus{outline:none;border-color:var(--green-mid);}
+.drawer-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.drawer-btn{width:100%;background:linear-gradient(135deg,var(--green-dark),var(--green-mid));color:white;border:none;padding:.88rem;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:all .3s;}
+.drawer-btn:hover{box-shadow:0 4px 16px rgba(46,125,50,.35);}
+
+/* ============================================================
+   SIDEBAR MENU
+============================================================ */
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:255px;background:var(--card);z-index:300;transform:translateX(-100%);transition:transform .4s cubic-bezier(.4,0,.2,1);padding:2rem 1.2rem;display:flex;flex-direction:column;gap:1.2rem;border-right:1px solid var(--border);}
+.sidebar.open{transform:translateX(0);}
+.sb-logo{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--green-dark);margin-bottom:.3rem;}
+body.dark .sb-logo{color:var(--green-light);}
+.sb-logo span{color:var(--amber);}
+.sb-item{display:flex;align-items:center;gap:.7rem;padding:.68rem .8rem;border-radius:12px;cursor:pointer;font-size:.9rem;font-weight:500;transition:all .3s;}
+.sb-item:hover{background:rgba(46,125,50,.08);color:var(--green-mid);}
+.sb-icon{font-size:1.1rem;width:24px;text-align:center;}
+.sb-divider{height:1px;background:var(--border);}
+.sb-version{font-size:.7rem;color:var(--muted);margin-top:auto;}
+
+/* ============================================================
+   DESKTOP / TABLET RESPONSIVE
+============================================================ */
+@media(min-width:768px){
+  #app{ max-width:100%; }
+
+  /* Override mobile fixed-bottom to fixed left sidebar */
+  .bottom-nav{
+    position:fixed;
+    left:0; top:0; bottom:0; right:auto;
+    width:80px;
+    height:100dvh;
+    flex-direction:column;
+    justify-content:center;
+    gap:1.4rem;
+    align-items:center;
+    border-top:none;
+    border-right:1px solid var(--border);
+    border-bottom:none;
+    padding:2rem 0;
+    min-height:unset;
+    overflow:hidden;
+  }
+  .nav-item{ flex:unset; width:100%; padding:.6rem 0; }
+  .nav-label{ display:block; }
+  .nav-home-btn{ margin-top:0; }
+
+  /* Shift everything right to clear the fixed sidenav */
+  .topbar{ padding:.8rem 2rem; margin-left:80px; }
+  .body-row{ margin-left:80px; }
+  .screens-wrap{ flex:1; overflow:hidden; }
+
+  /* Screens no longer need bottom padding for nav on desktop */
+  .screen{ padding-bottom:1rem; }
+
+  .dash-content,.meals-content,.diet-content,.market-content,.profile-content{ padding:1rem 2rem 1.5rem; }
+  .section-label{ padding:0 2rem; }
+  .page-title{ padding:1.1rem 2rem .4rem; }
+  .btn-fab{ right:2rem; bottom:1.5rem; }
+  .drawer{ max-width:768px; }
+}
+
+@media(min-width:1024px){
+  /* 3-column meal cards on wide screens */
+  .meal-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
+  .meal-card{ flex-direction:column; align-items:flex-start; gap:.6rem; padding:1.1rem; }
+  .meal-img{ width:100%; height:72px; border-radius:10px; font-size:2.2rem; justify-content:center; }
+  .meal-cost{ text-align:left; }
+  .pc-fields{ grid-template-columns:repeat(3,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     ONBOARDING
+============================================================ -->
+<div id="onboarding">
+  <!-- Loading -->
+  <div id="ob-loading">
+    <div class="ob-logo-icon">🥗</div>
+    <div class="ob-logo-title">Nutri<span>Budget</span></div>
+    <div class="ob-tagline">Eat well · Spend smart</div>
+    <div class="ob-loader-bar"><div class="ob-loader-fill"></div></div>
+  </div>
+
+  <!-- Slides -->
+  <div id="ob-slides">
+    <div class="ob-slide active" id="slide-1">
+      <div class="ob-illus">🍽️<div class="ob-badge">Smart</div></div>
+      <div class="ob-step">Step 1 of 3</div>
+      <div class="ob-title">Good food shouldn't cost a <span>fortune</span></div>
+      <div class="ob-desc">NutriBudget helps you plan nutritious meals that fit your budget — whether you're feeding yourself or your whole family.</div>
+    </div>
+    <div class="ob-slide" id="slide-2">
+      <div class="ob-illus">💰<div class="ob-badge">Budget</div></div>
+      <div class="ob-step">Step 2 of 3</div>
+      <div class="ob-title">Set your budget. Choose your <span>people</span>.</div>
+      <div class="ob-desc">Enter your budget and number of individuals. NutriBudget plans meals daily or weekly using real local market prices you control.</div>
+    </div>
+    <div class="ob-slide" id="slide-3">
+      <div class="ob-illus">📊<div class="ob-badge">Nutrition</div></div>
+      <div class="ob-step">Step 3 of 3</div>
+      <div class="ob-title">Track nutrients. Get <span>deficiency</span> alerts.</div>
+      <div class="ob-desc">See your carbs, protein, fats and vitamins in real time. Get alerts when something's missing — and know exactly what to fix.</div>
+    </div>
+    <!-- Get Started -->
+    <div id="slide-gs">
+      <div class="gs-logo">Nutri<span>Budget</span></div>
+      <div class="gs-title">Ready to eat well on a budget?</div>
+      <div class="gs-sub">Create an account or log in to get started.</div>
+      <div class="gs-btns">
+        <button class="btn-primary" onclick="enterApp()">🚀 Create Account</button>
+        <button class="btn-secondary" onclick="enterApp()">Log In</button>
+      </div>
+      <div class="gs-terms">By continuing you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a></div>
+    </div>
+
+    <!-- Bottom nav for onboarding -->
+    <div class="ob-nav" id="ob-nav">
+      <button class="ob-btn-skip" id="ob-skip" onclick="obSkip()">Skip</button>
+      <div class="ob-dots">
+        <div class="ob-dot active" onclick="obGoTo(0)"></div>
+        <div class="ob-dot" onclick="obGoTo(1)"></div>
+        <div class="ob-dot" onclick="obGoTo(2)"></div>
+        <div class="ob-dot" onclick="obGoTo(3)"></div>
+      </div>
+      <button class="ob-btn-next" id="ob-next" onclick="obNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     OVERLAYS & DRAWERS
+============================================================ -->
+<div class="overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sb-logo">Nutri<span>Budget</span></div>
+  <div class="sb-item" onclick="navigate('dashboard');closeSidebar()"><span class="sb-icon">🏠</span>Dashboard</div>
+  <div class="sb-item" onclick="navigate('meals');closeSidebar()"><span class="sb-icon">🍽️</span>Meal List</div>
+  <div class="sb-item" onclick="navigate('diet');closeSidebar()"><span class="sb-icon">📊</span>Diet Profile</div>
+  <div class="sb-item" onclick="navigate('market');closeSidebar()"><span class="sb-icon">🛒</span>Market Price</div>
+  <div class="sb-item" onclick="navigate('profile');closeSidebar()"><span class="sb-icon">👤</span>User Profile</div>
+  <div class="sb-divider"></div>
+  <div class="sb-item"><span class="sb-icon">⚙️</span>Settings</div>
+  <div class="sb-item"><span class="sb-icon">❓</span>Help</div>
+  <div class="sb-version">NutriBudget v1.0 · Prototype</div>
+</div>
+
+<div class="overlay" id="meal-overlay" onclick="closeDrawer('meal')"></div>
+<div class="drawer" id="meal-drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title">Add New Meal</div>
+  <div class="drawer-fields">
+    <div class="drawer-field"><div class="drawer-label">Meal Name</div><input class="drawer-input" placeholder="e.g. Jollof Rice & Chicken"></div>
+    <div class="drawer-row">
+      <div class="drawer-field"><div class="drawer-label">Category</div><select class="drawer-input"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+      <div class="drawer-field"><div class="drawer-label">Meal Time</div><input class="drawer-input" type="time" value="07:00"></div>
+    </div>
+    <div class="drawer-field"><div class="drawer-label">Ingredients (comma separated)</div><input class="drawer-input" placeholder="Rice, Tomato, Pepper, Oil"></div>
+    <div class="drawer-row">
+      <div class="drawer-field"><div class="drawer-label">Serving Size</div><input class="drawer-input" placeholder="e.g. 3"></div>
+      <div class="drawer-field"><div class="drawer-label">Unit</div><select class="drawer-input"><option>Cups</option><option>Derica</option><option>Congo</option><option>Pain</option><option>ml</option><option>Litres</option><option>Pieces</option></select></div>
+    </div>
+    <button class="drawer-btn" onclick="closeDrawer('meal')">✅ Save Meal</button>
+  </div>
+</div>
+
+<div class="overlay" id="ingr-overlay" onclick="closeDrawer('ingr')"></div>
+<div class="drawer" id="ingr-drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title">Add Ingredient</div>
+  <div class="drawer-fields">
+    <div class="drawer-field"><div class="drawer-label">Ingredient Name</div><input class="drawer-input" placeholder="e.g. Tomatoes"></div>
+    <div class="drawer-row">
+      <div class="drawer-field"><div class="drawer-label">Default Qty</div><input class="drawer-input" type="number" placeholder="1"></div>
+      <div class="drawer-field"><div class="drawer-label">Unit</div><select class="drawer-input"><option>Cups</option><option>Derica</option><option>Congo</option><option>kg</option><option>Pieces</option><option>ml</option></select></div>
+    </div>
+    <div class="drawer-field"><div class="drawer-label">Price (₦)</div><input class="drawer-input" type="number" placeholder="0.00"></div>
+    <button class="drawer-btn" onclick="closeDrawer('ingr')">✅ Add Ingredient</button>
+  </div>
+</div>
+
+<div class="overlay" id="person-overlay" onclick="closeDrawer('person')"></div>
+<div class="drawer" id="person-drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title">Add Individual</div>
+  <div class="drawer-fields">
+    <div class="drawer-row">
+      <div class="drawer-field"><div class="drawer-label">Full Name</div><input class="drawer-input" placeholder="Name"></div>
+      <div class="drawer-field"><div class="drawer-label">Age</div><input class="drawer-input" type="number" placeholder="25"></div>
+    </div>
+    <div class="drawer-field"><div class="drawer-label">Gender</div><select class="drawer-input"><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
+    <div class="drawer-row">
+      <div class="drawer-field"><div class="drawer-label">Height (cm)</div><input class="drawer-input" type="number" placeholder="170"></div>
+      <div class="drawer-field"><div class="drawer-label">Weight (kg)</div><input class="drawer-input" type="number" placeholder="65"></div>
+    </div>
+    <div class="drawer-field"><div class="drawer-label">Allergies</div><input class="drawer-input" placeholder="e.g. Nuts, Dairy"></div>
+    <div class="drawer-field"><div class="drawer-label">Health Conditions</div><input class="drawer-input" placeholder="e.g. Diabetes, Hypertension"></div>
+    <button class="drawer-btn" onclick="closeDrawer('person')">✅ Save Individual</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP
+============================================================ -->
+<div id="app">
+
+  <!-- TOP BAR — always above everything -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="hamburger" onclick="openSidebar()"><span></span><span></span><span></span></div>
+      <div class="app-name">Nutri<span>Budget</span></div>
+    </div>
+    <!-- notch-safe centre spacer -->
+    <div class="topbar-mid"></div>
+    <div class="topbar-right">
+      <div class="uid-user-stack">
+        <div class="uid-badge">12345:UID</div>
+        <div class="user-chip" onclick="navigate('profile')">👤 <span class="count" id="people-count">2</span></div>
+      </div>
+      <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+    </div>
+  </div>
+
+  <!-- BODY ROW: screens (mobile) | sidenav + screens (desktop) -->
+  <div class="body-row">
+
+    <!-- SCREENS WRAP -->
+    <div class="screens-wrap">
+
+      <!-- DASHBOARD -->
+      <div class="screen active" id="screen-dashboard">
+        <div class="dash-content">
+          <div class="budget-card">
+            <div class="budget-top">
+              <select class="currency-sel"><option>🇳🇬 NGN</option><option>🇺🇸 USD</option><option>🇬🇧 GBP</option></select>
+              <div class="budget-remaining">₦7,600 remaining</div>
+            </div>
+            <div class="budget-amount">₦20,000<span class="kobo">.00</span></div>
+            <div class="budget-footer">
+              <select class="plan-sel"><option>📅 Weekly</option><option>📆 Monthly</option><option>🍽️ Daily</option></select>
+              <div class="budget-progress">
+                <div class="progress-label"><span>Spent</span><span>62%</span></div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-label">Daily Diet Plan <a href="#" onclick="navigate('diet');return false;">View Week →</a></div>
+
+          <div class="meal-cards">
+            <div class="meal-card breakfast" onclick="navigate('meals')">
+              <div class="meal-img">🍳</div>
+              <div class="meal-info">
+                <div class="meal-type">Breakfast</div>
+                <div class="meal-name">Fried Egg & Bread</div>
+                <div class="meal-time">⏰ 7:00 AM</div>
+              </div>
+              <div class="meal-cost"><div class="amount">₦850</div><div class="per">per meal</div></div>
+            </div>
+            <div class="meal-card lunch" onclick="navigate('meals')">
+              <div class="meal-img">🍛</div>
+              <div class="meal-info">
+                <div class="meal-type">Lunch</div>
+                <div class="meal-name">Jollof Rice & Beans</div>
+                <div class="meal-time">⏰ 1:00 PM</div>
+              </div>
+              <div class="meal-cost"><div class="amount">₦1,400</div><div class="per">per meal</div></div>
+            </div>
+            <div class="meal-card dinner" onclick="navigate('meals')">
+              <div class="meal-img">🥘</div>
+              <div class="meal-info">
+                <div class="meal-type">Dinner</div>
+                <div class="meal-name">Egusi Soup & Eba</div>
+                <div class="meal-time">⏰ 7:30 PM</div>
+              </div>
+              <div class="meal-cost"><div class="amount">₦1,950</div><div class="per">per meal</div></div>
+            </div>
+          </div>
+
+          <div class="deficiency-card">
+            <div class="def-header" onclick="toggleDef()">
+              <div class="def-left">
+                <div class="alert-icon">⚠️</div>
+                <div><div class="def-title">Deficiency Alert</div><div class="def-count">2 nutrients need attention</div></div>
+              </div>
+              <div class="alert-badge">2</div>
+            </div>
+            <div class="def-body open" id="def-body">
+              <div class="def-item"><div class="def-dot"></div><div class="def-name">Micronutrients</div><div class="def-level">Low</div></div>
+              <div class="def-item"><div class="def-dot"></div><div class="def-name">Vitamin B</div><div class="def-level">Deficient</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEAL LIST -->
+      <div class="screen slide-right" id="screen-meals">
+        <div class="page-title">Meal List</div>
+        <div class="meals-content">
+          <div class="meal-list-card">
+            <div class="mlc-header" onclick="toggleMeal(this)">
+              <div class="mlc-img">🍳</div>
+              <div class="mlc-info"><div class="mlc-name">Fried Egg & Bread</div><div class="mlc-ingr">Egg · Bread · Butter · Salt</div></div>
+              <div class="mlc-toggle">▼</div>
+            </div>
+            <div class="mlc-body">
+              <div class="mlc-inner">
+                <div class="mlc-meta"><div class="mlc-big-img">🍳</div><div class="mlc-serving"><strong>Serving Info</strong>2 Pieces egg · 2 Slices bread</div></div>
+                <table class="ingr-table">
+                  <tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th></th></tr>
+                  <tr><td>Egg</td><td>2</td><td>Pieces</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Bread</td><td>2</td><td>Slices</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Butter</td><td>1</td><td>tbsp</td><td><button class="btn-delete">✕</button></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="meal-list-card">
+            <div class="mlc-header" onclick="toggleMeal(this)">
+              <div class="mlc-img">🍛</div>
+              <div class="mlc-info"><div class="mlc-name">Jollof Rice & Beans</div><div class="mlc-ingr">Rice · Beans · Tomato · Pepper · Oil</div></div>
+              <div class="mlc-toggle">▼</div>
+            </div>
+            <div class="mlc-body">
+              <div class="mlc-inner">
+                <div class="mlc-meta"><div class="mlc-big-img">🍛</div><div class="mlc-serving"><strong>Serving Info</strong>3 Cups rice · 2 Cups beans</div></div>
+                <table class="ingr-table">
+                  <tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th></th></tr>
+                  <tr><td>Rice</td><td>3</td><td>Cups</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Beans</td><td>2</td><td>Cups</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Tomato</td><td>5</td><td>Pieces</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Veg Oil</td><td>100</td><td>ml</td><td><button class="btn-delete">✕</button></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="meal-list-card">
+            <div class="mlc-header" onclick="toggleMeal(this)">
+              <div class="mlc-img">🥘</div>
+              <div class="mlc-info"><div class="mlc-name">Egusi Soup & Eba</div><div class="mlc-ingr">Garri · Egusi · Spinach · Palm oil</div></div>
+              <div class="mlc-toggle">▼</div>
+            </div>
+            <div class="mlc-body">
+              <div class="mlc-inner">
+                <div class="mlc-meta"><div class="mlc-big-img">🥘</div><div class="mlc-serving"><strong>Serving Info</strong>1 Congo garri · 200ml palm oil</div></div>
+                <table class="ingr-table">
+                  <tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th></th></tr>
+                  <tr><td>Garri</td><td>1</td><td>Congo</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Egusi</td><td>1</td><td>Cups</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Spinach</td><td>1</td><td>Derica</td><td><button class="btn-delete">✕</button></td></tr>
+                  <tr><td>Palm Oil</td><td>200</td><td>ml</td><td><button class="btn-delete">✕</button></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="add-meal-row" onclick="openDrawer('meal')">➕ Add New Meal</div>
+        </div>
+        <button class="btn-fab" onclick="openDrawer('meal')">+</button>
+      </div>
+
+      <!-- DIET PROFILE -->
+      <div class="screen slide-right" id="screen-diet">
+        <div class="page-title">Diet Profile</div>
+        <div class="diet-content">
+          <div class="view-toggle">
+            <button class="vt-btn active" onclick="setDietView('week',this)">📅 Weekly</button>
+            <button class="vt-btn" onclick="setDietView('chart',this)">🥧 Chart</button>
+            <button class="vt-btn" onclick="setDietView('list',this)">📋 List</button>
+          </div>
+          <div id="diet-week-view" class="diet-week">
+            <div class="diet-day-card">
+              <div class="ddc-header" onclick="toggleDay(this)">
+                <div><div class="ddc-day">Sunday</div><div class="ddc-meals">Breakfast · Lunch · Dinner</div></div>
+                <div class="ddc-toggle open">▼</div>
+              </div>
+              <div class="ddc-body open">
+                <div class="ddc-inner">
+                  <div class="ddc-meal-row" onclick="showNutrients('Fried Egg & Bread','Breakfast')"><div class="ddc-meal-type" style="color:var(--orange)">Breakfast</div><div class="ddc-meal-name">Fried Egg & Bread</div><div class="ddc-arrow">→</div></div>
+                  <div class="ddc-meal-row" onclick="showNutrients('Jollof Rice & Beans','Lunch')"><div class="ddc-meal-type" style="color:var(--green-mid)">Lunch</div><div class="ddc-meal-name">Jollof Rice & Beans</div><div class="ddc-arrow">→</div></div>
+                  <div class="ddc-meal-row" onclick="showNutrients('Egusi Soup & Eba','Dinner')"><div class="ddc-meal-type" style="color:var(--blue)">Dinner</div><div class="ddc-meal-name">Egusi Soup & Eba</div><div class="ddc-arrow">→</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="diet-day-card">
+              <div class="ddc-header" onclick="toggleDay(this)">
+                <div><div class="ddc-day">Monday</div><div class="ddc-meals">Breakfast · Lunch · Dinner</div></div>
+                <div class="ddc-toggle">▼</div>
+              </div>
+              <div class="ddc-body">
+                <div class="ddc-inner">
+                  <div class="ddc-meal-row" onclick="showNutrients('Oatmeal & Banana','Breakfast')"><div class="ddc-meal-type" style="color:var(--orange)">Breakfast</div><div class="ddc-meal-name">Oatmeal & Banana</div><div class="ddc-arrow">→</div></div>
+                  <div class="ddc-meal-row" onclick="showNutrients('Fried Rice & Plantain','Lunch')"><div class="ddc-meal-type" style="color:var(--green-mid)">Lunch</div><div class="ddc-meal-name">Fried Rice & Plantain</div><div class="ddc-arrow">→</div></div>
+                  <div class="ddc-meal-row" onclick="showNutrients('Pepper Soup','Dinner')"><div class="ddc-meal-type" style="color:var(--blue)">Dinner</div><div class="ddc-meal-name">Pepper Soup</div><div class="ddc-arrow">→</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="diet-day-card">
+              <div class="ddc-header" onclick="toggleDay(this)">
+                <div><div class="ddc-day">Tuesday</div><div class="ddc-meals">Breakfast · Lunch · Dinner</div></div>
+                <div class="ddc-toggle">▼</div>
+              </div>
+              <div class="ddc-body">
+                <div class="ddc-inner">
+                  <div class="ddc-meal-row" onclick="showNutrients('Akara & Pap','Breakfast')"><div class="ddc-meal-type" style="color:var(--orange)">Breakfast</div><div class="ddc-meal-name">Akara & Pap</div><div class="ddc-arrow">→</div></div>
+                  <div class="ddc-meal-row" onclick="showNutrients('Beans Porridge','Lunch')"><div class="ddc-meal-type" style="color:var(--green-mid)">Lunch</div><div class="ddc-meal-name">Beans Porridge</div><div class="ddc-arrow">→</div></div>
+                  <div class="ddc-meal-row" onclick="showNutrients('Yam & Egg Sauce','Dinner')"><div class="ddc-meal-type" style="color:var(--blue)">Dinner</div><div class="ddc-meal-name">Yam & Egg Sauce</div><div class="ddc-arrow">→</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="nutrient-panel" id="nutrient-panel">
+            <div class="np-title" id="np-title">Fried Egg & Bread</div>
+            <div class="np-sub" id="np-sub">Breakfast · Nutritional Breakdown</div>
+            <div class="chart-wrap"><canvas id="nutrient-chart"></canvas></div>
+            <div class="nutrient-bars">
+              <div class="nb-row"><div class="nb-label">Carbohydrates</div><div class="nb-bar-wrap"><div class="nb-bar" style="width:60%;background:#F59E0B;"></div></div><div class="nb-val" style="color:#F59E0B">60%</div></div>
+              <div class="nb-row"><div class="nb-label">Protein</div><div class="nb-bar-wrap"><div class="nb-bar" style="width:20%;background:var(--green-mid);"></div></div><div class="nb-val" style="color:var(--green-mid)">20%</div></div>
+              <div class="nb-row"><div class="nb-label">Fat & Oil</div><div class="nb-bar-wrap"><div class="nb-bar" style="width:10%;background:var(--blue);"></div></div><div class="nb-val" style="color:var(--blue)">10%</div></div>
+              <div class="nb-row"><div class="nb-label">Vitamins</div><div class="nb-bar-wrap"><div class="nb-bar" style="width:18%;background:var(--red);"></div></div><div class="nb-val" style="color:var(--red)">18%</div></div>
+            </div>
+          </div>
+          <div class="def-section">
+            <div class="def-sec-title">⚠️ Deficiency Alert</div>
+            <div class="def-item"><div class="def-dot"></div><div class="def-name">Micronutrients</div><div class="def-level">Low</div></div>
+            <div class="def-item"><div class="def-dot"></div><div class="def-name">Vitamin B</div><div class="def-level">Deficient</div></div>
+          </div>
+          <div id="diet-chart-view" style="display:none;">
+            <div style="background:var(--card);border-radius:16px;border:1.5px solid var(--border);padding:1.1rem;">
+              <div style="font-weight:700;font-size:.95rem;margin-bottom:.5rem;">Weekly Nutrition Overview</div>
+              <div style="position:relative;height:240px;"><canvas id="weekly-chart"></canvas></div>
+            </div>
+          </div>
+          <div id="diet-list-view" style="display:none;" class="nutrient-list">
+            <div class="nl-item"><div><div class="nl-name">Carbohydrates</div><div class="nl-sub">Primary energy source</div></div><div style="text-align:right"><div class="nl-val">60%</div><div class="nl-badge ok">Adequate</div></div></div>
+            <div class="nl-item"><div><div class="nl-name">Protein</div><div class="nl-sub">Muscle & repair</div></div><div style="text-align:right"><div class="nl-val">20%</div><div class="nl-badge ok">Adequate</div></div></div>
+            <div class="nl-item"><div><div class="nl-name">Fat & Oil</div><div class="nl-sub">Energy & absorption</div></div><div style="text-align:right"><div class="nl-val">10%</div><div class="nl-badge low">Low</div></div></div>
+            <div class="nl-item"><div><div class="nl-name">Vitamins</div><div class="nl-sub">Immune & metabolism</div></div><div style="text-align:right"><div class="nl-val">18%</div><div class="nl-badge low">Low</div></div></div>
+            <div class="nl-item"><div><div class="nl-name">Micronutrients</div><div class="nl-sub">Iron, Zinc, Calcium</div></div><div style="text-align:right"><div class="nl-val">5%</div><div class="nl-badge def">Deficient</div></div></div>
+            <div class="nl-item"><div><div class="nl-name">Vitamin B</div><div class="nl-sub">B1, B6, B12</div></div><div style="text-align:right"><div class="nl-val">3%</div><div class="nl-badge def">Deficient</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MARKET PRICE -->
+      <div class="screen slide-right" id="screen-market">
+        <div class="page-title">Market Price</div>
+        <div class="market-content">
+          <div class="market-note">💡 Prices vary by location. Update anytime to keep calculations accurate.</div>
+          <div class="market-table-card">
+            <div class="mt-head"><div>Ingredient</div><div>Quantity</div><div>Price (₦)</div><div></div></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🌾</span>Rice</div><select class="qty-select"><option>1 Cup</option><option>1 Derica</option><option>1 Congo</option><option>1 kg</option></select><input class="price-input" type="number" value="350"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🫘</span>Beans</div><select class="qty-select"><option>1 Cup</option><option>1 Derica</option><option>1 Congo</option></select><input class="price-input" type="number" value="280"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🍅</span>Tomato</div><select class="qty-select"><option>5 Pieces</option><option>1 Basket</option><option>1 kg</option></select><input class="price-input" type="number" value="500"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🛢️</span>Veg Oil</div><select class="qty-select"><option>1 Litre</option><option>500 ml</option><option>250 ml</option></select><input class="price-input" type="number" value="1200"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🥚</span>Egg</div><select class="qty-select"><option>1 Piece</option><option>1 Crate</option></select><input class="price-input" type="number" value="150"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🌴</span>Palm Oil</div><select class="qty-select"><option>500 ml</option><option>1 Litre</option></select><input class="price-input" type="number" value="900"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="mt-row"><div class="mt-ingr"><span class="mt-ingr-icon">🌿</span>Spinach</div><select class="qty-select"><option>1 Bunch</option><option>1 Derica</option></select><input class="price-input" type="number" value="200"><button class="mt-del" onclick="delRow(this)">🗑</button></div>
+            <div class="add-ingr-row" onclick="openDrawer('ingr')">➕ Add Ingredient</div>
+          </div>
+          <div class="market-total">
+            <div><div class="mt-total-label">Estimated Weekly Total</div><div class="mt-total-sub">Based on meal plan × 2 people</div></div>
+            <div style="text-align:right"><div class="mt-total-amount">₦12,400</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USER PROFILE -->
+      <div class="screen slide-right" id="screen-profile">
+        <div class="page-title">User Profiles</div>
+        <div class="profile-content">
+          <div class="profile-card">
+            <div class="pc-header" onclick="toggleProfile(this)">
+              <div class="pc-avatar">👤</div>
+              <div class="pc-info"><div class="pc-name">Adaeze Okonkwo</div><div class="pc-meta">Female · 28 yrs · BMI 22.4</div></div>
+              <div class="pc-toggle open">▼</div>
+            </div>
+            <div class="pc-body open">
+              <div class="pc-inner">
+                <div class="pc-fields">
+                  <div class="pc-field"><div class="pc-label">Full Name</div><input class="pc-input" value="Adaeze Okonkwo"></div>
+                  <div class="pc-field"><div class="pc-label">Age</div><input class="pc-input" type="number" value="28"></div>
+                  <div class="pc-field"><div class="pc-label">Gender</div><select class="pc-select"><option selected>Female</option><option>Male</option><option>Prefer not to say</option></select></div>
+                  <div class="pc-field"><div class="pc-label">Height (cm)</div><input class="pc-input" type="number" value="165"></div>
+                  <div class="pc-field"><div class="pc-label">Weight (kg)</div><input class="pc-input" type="number" value="61"></div>
+                  <div class="pc-field"><div class="pc-label">Blood Group</div><input class="pc-input" value="O+"></div>
+                  <div class="pc-field full"><div class="pc-label">Allergies</div><input class="pc-input" value="None"></div>
+                  <div class="pc-field full"><div class="pc-label">Health Conditions</div><input class="pc-input" value="None"></div>
+                </div>
+                <div class="bmi-card"><div><div class="bmi-val">22.4</div><div class="bmi-label">Body Mass Index</div></div><div class="bmi-status">✅ Normal Weight</div></div>
+                <button class="btn-save">Save Changes</button>
+              </div>
+            </div>
+          </div>
+          <div class="profile-card">
+            <div class="pc-header" onclick="toggleProfile(this)">
+              <div class="pc-avatar">👤</div>
+              <div class="pc-info"><div class="pc-name">Emeka Okonkwo</div><div class="pc-meta">Male · 32 yrs · BMI 24.8</div></div>
+              <div class="pc-toggle">▼</div>
+            </div>
+            <div class="pc-body">
+              <div class="pc-inner">
+                <div class="pc-fields">
+                  <div class="pc-field"><div class="pc-label">Full Name</div><input class="pc-input" value="Emeka Okonkwo"></div>
+                  <div class="pc-field"><div class="pc-label">Age</div><input class="pc-input" type="number" value="32"></div>
+                  <div class="pc-field"><div class="pc-label">Gender</div><select class="pc-select"><option>Female</option><option selected>Male</option></select></div>
+                  <div class="pc-field"><div class="pc-label">Height (cm)</div><input class="pc-input" type="number" value="178"></div>
+                  <div class="pc-field"><div class="pc-label">Weight (kg)</div><input class="pc-input" type="number" value="79"></div>
+                  <div class="pc-field"><div class="pc-label">Blood Group</div><input class="pc-input" value="A+"></div>
+                  <div class="pc-field full"><div class="pc-label">Allergies</div><input class="pc-input" value="None"></div>
+                  <div class="pc-field full"><div class="pc-label">Health Conditions</div><input class="pc-input" value="Mild Hypertension"></div>
+                </div>
+                <div class="bmi-card"><div><div class="bmi-val">24.8</div><div class="bmi-label">Body Mass Index</div></div><div class="bmi-status">✅ Normal Weight</div></div>
+                <button class="btn-save">Save Changes</button>
+              </div>
+            </div>
+          </div>
+          <div class="add-person-btn" onclick="openDrawer('person')">➕ Add Individual</div>
+        </div>
+      </div>
+
+    </div><!-- end screens-wrap -->
+  </div><!-- end body-row -->
+
+  <!-- NAV: bottom on mobile, pulled into body-row left side on desktop via CSS -->
+  <nav class="bottom-nav">
+    <div class="nav-item" id="nav-meals" onclick="navigate('meals')" title="Meal List">
+      <div class="nav-icon">🍽️</div>
+      <div class="nav-label">Meals</div>
+    </div>
+    <div class="nav-item" id="nav-diet" onclick="navigate('diet')" title="Diet Profile">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">Diet</div>
+    </div>
+    <div class="nav-item nav-home active" id="nav-dashboard" onclick="navigate('dashboard')" title="Dashboard">
+      <div class="nav-home-btn">🏠</div>
+      <div class="nav-label">Home</div>
+    </div>
+    <div class="nav-item" id="nav-market" onclick="navigate('market')" title="Market Price">
+      <div class="nav-icon">🛒</div>
+      <div class="nav-label">Market</div>
+    </div>
+    <div class="nav-item" id="nav-profile" onclick="navigate('profile')" title="Profile">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Profile</div>
+    </div>
+  </nav>
+
+</div><!-- end app -->
+
+<script>
+/* ============================================================
+   ONBOARDING
+============================================================ */
+const obSlides = ['slide-1','slide-2','slide-3','slide-gs'];
+let obCurrent = 0;
+
+// After loading bar finishes, show slides
+setTimeout(()=>{
+  document.getElementById('ob-loading').classList.add('fade');
+  setTimeout(()=>{
+    document.getElementById('ob-loading').style.display='none';
+    document.getElementById('ob-slides').classList.add('visible');
+  },500);
+},2800);
+
+function obGoTo(idx){
+  const prev = document.getElementById(obSlides[obCurrent]);
+  prev.classList.remove('active');
+  prev.classList.add('exit-left');
+  setTimeout(()=>prev.classList.remove('exit-left'),420);
+  obCurrent = idx;
+  document.getElementById(obSlides[obCurrent]).classList.add('active');
+  updateObNav();
+}
+
+function obNext(){
+  if(obCurrent < obSlides.length-1) obGoTo(obCurrent+1);
+}
+function obSkip(){ obGoTo(obSlides.length-1); }
+
+function updateObNav(){
+  const dots = document.querySelectorAll('.ob-dot');
+  dots.forEach((d,i)=>d.classList.toggle('active', i===obCurrent));
+  const btnNext = document.getElementById('ob-next');
+  const btnSkip = document.getElementById('ob-skip');
+  const isLast  = obCurrent === obSlides.length-1;
+  const isGs    = obSlides[obCurrent]==='slide-gs';
+  btnNext.style.display = isGs ? 'none' : 'flex';
+  btnSkip.style.display = isGs ? 'none' : 'block';
+  if(!isGs){
+    btnNext.textContent = obCurrent===obSlides.length-2 ? 'Get Started 🎉' : 'Next →';
+    btnNext.className   = obCurrent===obSlides.length-2 ? 'ob-btn-next amber-btn' : 'ob-btn-next';
+  }
+}
+
+function enterApp(){
+  const ob = document.getElementById('onboarding');
+  ob.classList.add('hidden');
+  setTimeout(()=>ob.style.display='none',500);
+}
+
+/* ============================================================
+   MAIN APP NAVIGATION
+============================================================ */
+const screenOrder = ['meals','diet','dashboard','market','profile'];
+let current = 'dashboard';
+let chartInstance = null;
+let weeklyChartInstance = null;
+
+function navigate(to){
+  if(to===current) return;
+  const fromIdx = screenOrder.indexOf(current);
+  const toIdx   = screenOrder.indexOf(to);
+  const dir     = toIdx > fromIdx ? 'left' : 'right';
+  const fromEl  = document.getElementById('screen-'+current);
+  const toEl    = document.getElementById('screen-'+to);
+  toEl.classList.remove('slide-left','slide-right','active');
+  toEl.classList.add(dir==='left' ? 'slide-right' : 'slide-left');
+  toEl.offsetWidth; // reflow
+  fromEl.classList.remove('active');
+  fromEl.classList.add(dir==='left' ? 'slide-left' : 'slide-right');
+  toEl.classList.remove('slide-left','slide-right');
+  toEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-'+to).classList.add('active');
+  current = to;
+  if(to==='diet') setTimeout(initCharts,100);
+}
+
+/* ============================================================
+   SIDEBAR
+============================================================ */
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sb-overlay').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('open');
+}
+
+/* ============================================================
+   DRAWERS
+============================================================ */
+function openDrawer(t){ document.getElementById(t+'-drawer').classList.add('open'); document.getElementById(t+'-overlay').classList.add('open'); }
+function closeDrawer(t){ document.getElementById(t+'-drawer').classList.remove('open'); document.getElementById(t+'-overlay').classList.remove('open'); }
+
+/* ============================================================
+   TOGGLES
+============================================================ */
+function toggleDef(){ document.getElementById('def-body').classList.toggle('open'); }
+function toggleMeal(h){ h.nextElementSibling.classList.toggle('open'); h.querySelector('.mlc-toggle').classList.toggle('open'); }
+function toggleDay(h){ h.nextElementSibling.classList.toggle('open'); h.querySelector('.ddc-toggle').classList.toggle('open'); }
+function toggleProfile(h){ h.nextElementSibling.classList.toggle('open'); h.querySelector('.pc-toggle').classList.toggle('open'); }
+
+/* ============================================================
+   DIET VIEWS
+============================================================ */
+function setDietView(view,btn){
+  document.querySelectorAll('.vt-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('diet-week-view').style.display  = view==='week'  ? 'flex':'none';
+  document.getElementById('diet-chart-view').style.display = view==='chart' ? 'block':'none';
+  document.getElementById('diet-list-view').style.display  = view==='list'  ? 'flex':'none';
+  document.getElementById('nutrient-panel').style.display  = 'none';
+  if(view==='chart') setTimeout(initWeeklyChart,100);
+}
+
+function showNutrients(meal,type){
+  document.getElementById('np-title').textContent = meal;
+  document.getElementById('np-sub').textContent   = type+' · Nutritional Breakdown';
+  const panel = document.getElementById('nutrient-panel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  setTimeout(initNutrientChart,100);
+}
+
+/* ============================================================
+   CHARTS
+============================================================ */
+function initCharts(){ initNutrientChart(); }
+
+function initNutrientChart(){
+  const ctx = document.getElementById('nutrient-chart');
+  if(!ctx) return;
+  if(chartInstance){ chartInstance.destroy(); chartInstance=null; }
+  const dk = document.body.classList.contains('dark');
+  chartInstance = new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['Carbohydrates','Protein','Fat & Oil','Vitamins'],datasets:[{data:[60,20,10,18],backgroundColor:['#F59E0B','#43A047','#5C6BC0','#EF5350'],borderWidth:3,borderColor:dk?'#1A2B1A':'#FFFFFF',hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:dk?'#F0F7F0':'#1A1A1A',padding:12,font:{family:'DM Sans',size:11}}}}}
+  });
+}
+
+function initWeeklyChart(){
+  const ctx = document.getElementById('weekly-chart');
+  if(!ctx) return;
+  if(weeklyChartInstance){ weeklyChartInstance.destroy(); weeklyChartInstance=null; }
+  const dk = document.body.classList.contains('dark');
+  weeklyChartInstance = new Chart(ctx,{
+    type:'bar',
+    data:{labels:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],datasets:[
+      {label:'Carbs',  data:[60,55,65,58,62,70,50],backgroundColor:'#F59E0B'},
+      {label:'Protein',data:[20,22,18,25,20,18,24],backgroundColor:'#43A047'},
+      {label:'Fat',    data:[10,12,8,10,14,10,12], backgroundColor:'#5C6BC0'},
+      {label:'Vitamins',data:[18,15,20,18,12,16,22],backgroundColor:'#EF5350'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        x:{stacked:true,ticks:{color:dk?'#8FA98F':'#6B7B6B',font:{family:'DM Sans'}},grid:{color:'transparent'}},
+        y:{stacked:true,ticks:{color:dk?'#8FA98F':'#6B7B6B',font:{family:'DM Sans'}},grid:{color:dk?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)'}}
+      },
+      plugins:{legend:{labels:{color:dk?'#F0F7F0':'#1A1A1A',font:{family:'DM Sans',size:11},padding:10}}}
+    }
+  });
+}
+
+function delRow(btn){ btn.closest('.mt-row').remove(); }
+
+/* ============================================================
+   THEME
+============================================================ */
+function toggleTheme(){
+  document.body.classList.toggle('dark');
+  document.querySelector('.theme-btn').textContent = document.body.classList.contains('dark')?'☀️':'🌙';
+  if(chartInstance) initNutrientChart();
+  if(weeklyChartInstance) initWeeklyChart();
+}
+</script>
+</body>
+</html>
